@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>クリック連打</title>
+    <style>
+        body { font-family: 'Courier New', sans-serif; text-align: center; background: #000; color: #0f0; padding-top: 30px; overflow: hidden; }
+        #btn { width: 160px; height: 160px; border-radius: 50%; border: 4px solid #0f0; background: transparent; color: #0f0; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.05s; outline: none; box-shadow: 0 0 15px #0f0; }
+        #btn:active { background: #0f0; color: #000; transform: scale(1.1); }
+        #btn:disabled { border-color: #333; color: #333; box-shadow: none; }
+        .info { font-size: 1.2rem; margin: 10px; }
+        .high-score { color: #ffeb3b; text-shadow: 0 0 10px #ffeb3b; }
+        #retry-btn { display: none; padding: 10px 20px; font-size: 18px; background: #fff; color: #000; border: none; cursor: pointer; margin-top: 15px; font-weight: bold; }
+        #rank { font-size: 2rem; color: #ff00ff; margin-top: 10px; font-weight: bold; text-shadow: 0 0 10px #ff00ff; }
+    </style>
+</head>
+<body>
+    <h1>CLICKER OS v2.6</h1>
+    <div class="info">BEST: <span id="highScore" class="high-score">0</span></div>
+    <div class="info">TIME: <span id="time">10</span>s | SCORE: <span id="score">0</span></div>
+    
+    <button id="btn">INITIALIZE</button><br>
+    <div id="rank"></div>
+    <button id="retry-btn" onclick="resetGame()">REBOOT</button>
+    <p id="msg"></p>
+
+    <script>
+        let score = 0, timeLeft = 10, active = false, timerId = null, bgmId = null;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playSound(f, type, d, vol = 0.1) {
+            const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+            o.type = type; o.frequency.setValueAtTime(f, audioCtx.currentTime);
+            g.gain.setValueAtTime(vol, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + d);
+            o.connect(g); g.connect(audioCtx.destination);
+            o.start(); o.stop(audioCtx.currentTime + d);
+        }
+
+        function startBGM() {
+            let step = 0;
+            const notes = [110, 110, 146, 110, 164, 110, 146, 130]; 
+            bgmId = setInterval(() => {
+                playSound(notes[step % notes.length], 'square', 0.2, 0.05);
+                step++;
+            }, 250);
+        }
+
+        const btn = document.getElementById('btn'), retryBtn = document.getElementById('retry-btn');
+        const scoreDisp = document.getElementById('score'), timeDisp = document.getElementById('time');
+        const highScoreDisp = document.getElementById('highScore'), rankDisp = document.getElementById('rank');
+
+        let savedScore = localStorage.getItem('ultra_click_score') || 0;
+        highScoreDisp.innerText = savedScore;
+
+        btn.onclick = () => {
+            if (timeLeft <= 0) return;
+            playSound(440 + score, 'triangle', 0.1);
+            if (!active) {
+                active = true;
+                btn.innerText = "PUSH";
+                startBGM();
+                timerId = setInterval(() => {
+                    timeLeft--; timeDisp.innerText = timeLeft;
+                    if (timeLeft <= 0) { clearInterval(timerId); clearInterval(bgmId); finish(); }
+                }, 1000);
+            }
+            score++; scoreDisp.innerText = score;
+        };
+
+        function getRank(s) {
+            if (s >= 1000) return"fraud(あなた絶対不正してない?)"
+			if (s >= 200) return "GOD (神さまあ)";
+            if (s >= 150)  return "AI(AIを超えた人!)";
+            if (s >= 80)  return "LEGEND (あなたすごいよ！)";
+            if (s >= 70)  return "PRO (すごいじゃん)";
+            if (s >= 40)  return "AMATEUR (速いですね)";
+            return "NOOB (初心者)";
+        }
+
+        
+function finish() {
+    btn.disabled = true;
+    
+    
+    let currentBest = parseInt(localStorage.getItem('ultra_click_score')) || 0;
+
+    if (score > currentBest) {
+        
+        localStorage.setItem('ultra_click_score', score);
+        highScoreDisp.innerText = score;
+        
+        [523.25, 659.25, 783.99].forEach((f, i) => 
+            setTimeout(() => playSound(f, 'sine', 0.4, 0.1), i * 100)
+        );
+        document.getElementById('msg').innerText = "🔥 NEW RECORD!! 🔥";
+    } else {
+        highScoreDisp.innerText = currentBest;
+        playSound(150, 'sawtooth', 0.5, 0.1); 
+        document.getElementById('msg').innerText = "GAME OVER";
+    }
+    
+    rankDisp.innerText = getRank(score);
+    retryBtn.style.display = "inline-block";
+}
+
+
+        function resetGame() {
+            score = 0; timeLeft = 10; active = false;
+            scoreDisp.innerText = 0; timeDisp.innerText = 10;
+            rankDisp.innerText = ""; document.getElementById('msg').innerText = "";
+            btn.disabled = false; btn.innerText = "INITIALIZE";
+            retryBtn.style.display = "none";
+        }
+    </script>
+</body>
+</html>
